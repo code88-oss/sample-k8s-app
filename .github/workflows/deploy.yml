@@ -43,7 +43,7 @@ jobs:
           set -e
           git config user.name "GitHub Actions"
           git config user.email "github-actions@github.com"
-          git remote set-url origin https://x-access-token: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@github.com/code88-oss/sample-k8s-app.git
+          git remote set-url origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/code88-oss/sample-k8s-app.git
           git add .
           git commit -m "Update image tag to ${{ github.sha }} [skip ci]"
           git push
