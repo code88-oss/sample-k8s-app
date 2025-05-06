@@ -42,13 +42,9 @@ jobs:
 
           git add k8s/deployment.yaml
 
-          # Chỉ commit nếu có thay đổi
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Update image tag to $TAG"
+            git commit -m "Update image tag to ${{ env.TAG }}"
             git push
           fi
-
-          git commit -m "Update image tag to ${{ env.TAG }}"
-          git push
