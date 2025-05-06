@@ -43,15 +43,20 @@ jobs:
           set -e
           git config user.name "GitHub Actions"
           git config user.email "github-actions@github.com"
-          git remote set-url origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git
+          git remote set-url origin https://x-access-token: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@github.com/code88-oss/sample-k8s-app.git
           git add .
           git commit -m "Update image tag to ${{ github.sha }} [skip ci]"
           git push
 
-      - name: Deploy to Kubernetes
-        env:
-          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+      - name: Deploy to Minikube
         run: |
           set -e
-          echo "$KUBE_CONFIG" > kubeconfig.yaml
-          kubectl apply -f k8s/deployment.yaml --kubeconfig kubeconfig.yaml
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo mv minikube-linux-amd64 /usr/local/bin/minikube
+          sudo chmod +x /usr/local/bin/minikube
+          curl -LO https://dl.k8s.io/release/v1.22.0/bin/linux/amd64/kubectl
+          sudo mv kubectl /usr/local/bin/
+          sudo chmod +x /usr/local/bin/kubectl
+          minikube start --driver=docker
+          kubectl config use-context minikube
+          kubectl apply -f k8s/deployment.yaml
