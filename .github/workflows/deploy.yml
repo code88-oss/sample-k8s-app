@@ -2,7 +2,7 @@ name: Build and Push HTML App
 
 on:
   push:
-    branches: [main]
+    branches: [master]
 
 jobs:
   build:
