@@ -19,7 +19,6 @@ spec:
           volumeMounts:
             - name: html
               mountPath: /usr/share/nginx/html
-          containerPort: 80
       volumes:
         - name: html
           configMap:
