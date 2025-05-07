@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: tranhoangthaidevops/html-app:20250507-bac8a8f
+          image: tranhoangthaidevops/html-app:20250507-9665896
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: html
