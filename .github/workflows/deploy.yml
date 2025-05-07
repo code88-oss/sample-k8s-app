@@ -87,11 +87,14 @@ jobs:
           # Check Docker status
           echo "Checking Docker status..."
           docker info || { echo "Docker is not running"; exit 1; }
+          # Preload Minikube image
+          echo "Preloading Minikube image..."
+          docker pull gcr.io/k8s-minikube/kicbase:latest
           # Start Minikube with retries
           echo "Starting Minikube..."
           for attempt in {1..3}; do
             echo "Attempt $attempt of 3..."
-            minikube start --driver=docker --cpus=6 --memory=8000mb --force && break
+            minikube start --driver=docker --cpus=4 --memory=6000mb --force && break
             echo "Minikube start failed, retrying in 10 seconds..."
             sleep 10
             if [ $attempt -eq 3 ]; then
@@ -102,26 +105,43 @@ jobs:
           done
           minikube status || { echo "Minikube status check failed"; minikube logs; exit 1; }
           kubectl config use-context minikube
+          # Wait for node to be ready
+          echo "Waiting for Minikube node to be ready..."
+          kubectl wait --for=condition=Ready node/minikube --timeout=300s || { echo "Node not ready"; kubectl get nodes; exit 1; }
           # Clean up existing resources
           echo "Cleaning up existing resources..."
           kubectl delete service web -n default --ignore-not-found
           kubectl delete deployment web -n default --ignore-not-found
           kubectl delete configmap web-html -n default --ignore-not-found
-          # Install Argo CD (namespace-scoped)
+          # Install Argo CD (namespace-scoped) with retries
           echo "Installing Argo CD..."
           kubectl create namespace argocd || true
-          kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/namespace-install.yaml
-          echo "Waiting for Argo CD pods to be ready..."
           for attempt in {1..3}; do
             echo "Attempt $attempt of 3..."
-            kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=600s && break
+            kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/namespace-install.yaml && break
+            echo "Failed to apply Argo CD manifest, retrying in 30 seconds..."
+            sleep 30
+            if [ $attempt -eq 3 ]; then
+              echo "Failed to install Argo CD after 3 attempts"
+              exit 1
+            fi
+          done
+          # Apply resource limits
+          echo "Applying Argo CD resource limits..."
+          kubectl apply -f k8s/argocd-resource-limits.yaml || { echo "Failed to apply resource limits"; exit 1; }
+          # Wait for Argo CD pods to be ready
+          echo "Waiting for Argo CD pods to be ready..."
+          for attempt in {1..5}; do
+            echo "Attempt $attempt of 5..."
+            kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=900s && break
             echo "Argo CD pods not ready, checking pod status..."
             kubectl get pods -n argocd
             kubectl describe pod -n argocd -l app.kubernetes.io/name=argocd-application-controller || true
             echo "Retrying in 30 seconds..."
             sleep 30
-            if [ $attempt -eq 3 ]; then
-              echo "Argo CD pods failed to become ready after 3 attempts"
+            if [ $attempt -eq 5 ]; then
+              echo "Argo CD pods failed to become ready after 5 attempts"
+              kubectl get pods -n argocd
               exit 1
             fi
           done
