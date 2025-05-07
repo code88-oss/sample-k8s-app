@@ -7,8 +7,10 @@ data:
   index.html: |
     <!DOCTYPE html>
     <html>
-    <head><title>Hello ArgoCD</title></head>
-    <body>
-      <h1>Deployed by Argo CD 🚀</h1>
-    </body>
+      <head>
+        <title>Hello ArgoCD</title>
+      </head>
+      <body>
+        <h1>Deploy full life cycle test at 2025-05-07</h1>
+      </body>
     </html>
