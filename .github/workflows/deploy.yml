@@ -102,6 +102,11 @@ jobs:
           done
           minikube status || { echo "Minikube status check failed"; minikube logs; exit 1; }
           kubectl config use-context minikube
+          # Clean up existing resources
+          echo "Cleaning up existing resources..."
+          kubectl delete service web -n default --ignore-not-found
+          kubectl delete deployment web -n default --ignore-not-found
+          kubectl delete configmap web-html -n default --ignore-not-found
           # Install Argo CD (namespace-scoped)
           echo "Installing Argo CD..."
           kubectl create namespace argocd || true
@@ -125,7 +130,7 @@ jobs:
           kubectl apply -f k8s/argocd-app.yaml || { echo "Failed to apply Argo CD Application"; exit 1; }
           # Wait for Argo CD to sync
           echo "Waiting for Argo CD to sync application..."
-          for i in {1..60}; do
+          for i in {1..90}; do
             SYNC_STATUS=$(kubectl get application web-app -n argocd -o jsonpath='{.status.sync.status}' || echo "NotFound")
             HEALTH_STATUS=$(kubectl get application web-app -n argocd -o jsonpath='{.status.health.status}' || echo "NotFound")
             echo "Sync Status: $SYNC_STATUS, Health Status: $HEALTH_STATUS"
@@ -134,7 +139,7 @@ jobs:
               break
             fi
             sleep 10
-            if [ $i -eq 60 ]; then
+            if [ $i -eq 90 ]; then
               echo "Argo CD failed to sync application"
               kubectl describe application web-app -n argocd
               exit 1
