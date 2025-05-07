@@ -104,7 +104,7 @@ jobs:
           # Apply Kubernetes resources
           echo "Checking ConfigMap content..."
           kubectl get configmap web-html -n default -o yaml
-          kubectl apply -f k8s/web-html-configmap.yaml || { echo "Failed to apply ConfigMap"; exit 1; }
+          kubectl apply -f k8s/configmap.yaml || { echo "Failed to apply ConfigMap"; exit 1; }
           kubectl apply -f k8s/deployment.yaml
           kubectl apply -f k8s/service.yaml || { echo "Failed to apply Service"; exit 1; }
           # Verify resources
