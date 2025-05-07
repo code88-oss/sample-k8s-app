@@ -3,7 +3,9 @@ name: Build and Push HTML App
 on:
   push:
     branches: [master]
-  if: github.actor != 'github-actions[bot]'
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -32,10 +34,16 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: tranhoangthaidevops/html-app:${{ env.TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Update deployment.yaml with new tag
         run: |
           set -e
+          if [ ! -f k8s/deployment.yaml ]; then
+            echo "Error: k8s/deployment.yaml not found"
+            exit 1
+          fi
           sed -i "s|\(image: tranhoangthaidevops/html-app:\).*|\1${{ env.TAG }}|" k8s/deployment.yaml
 
       - name: Push changes back to repo
@@ -43,9 +51,9 @@ jobs:
           set -e
           git config user.name "GitHub Actions"
           git config user.email "github-actions@github.com"
-          git remote set-url origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/code88-oss/sample-k8s-app.git
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/code88-oss/sample-k8s-app.git
           git add .
-          git commit -m "Update image tag to ${{ github.sha }} [skip ci]"
+          git commit -m "Update image tag to ${{ env.TAG }} [skip ci]"
           git push
 
       - name: Deploy to Minikube
@@ -54,9 +62,17 @@ jobs:
           curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
           sudo mv minikube-linux-amd64 /usr/local/bin/minikube
           sudo chmod +x /usr/local/bin/minikube
-          curl -LO https://dl.k8s.io/release/v1.22.0/bin/linux/amd64/kubectl
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
           sudo mv kubectl /usr/local/bin/
           sudo chmod +x /usr/local/bin/kubectl
           minikube start --driver=docker
+          minikube status || { echo "Minikube failed to start"; exit 1; }
           kubectl config use-context minikube
           kubectl apply -f k8s/deployment.yaml
+          kubectl rollout status deployment/your-deployment-name -n default --timeout=120s
+
+      - name: Clean up
+        if: always()
+        run: |
+          minikube stop || true
+          rm -rf /usr/local/bin/minikube /usr/local/bin/kubectl || true
