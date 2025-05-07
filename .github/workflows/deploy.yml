@@ -1,3 +1,4 @@
+```yaml
 name: Build and Push HTML App
 
 on:
@@ -37,6 +38,11 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Verify Docker image
+        run: |
+          set -e
+          docker pull tranhoangthaidevops/html-app:${{ env.TAG }} || { echo "Failed to pull image"; exit 1; }
+
       - name: Update deployment.yaml with new tag
         run: |
           set -e
@@ -45,6 +51,8 @@ jobs:
             exit 1
           fi
           sed -i "s|\(image: tranhoangthaidevops/html-app:\).*|\1${{ env.TAG }}|" k8s/deployment.yaml
+          echo "Updated deployment.yaml:"
+          cat k8s/deployment.yaml
 
       - name: Push changes back to repo
         run: |
@@ -76,9 +84,9 @@ jobs:
           curl -LO https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz || { echo "Failed to download ngrok"; exit 1; }
           ls -l ngrok-v3-stable-linux-amd64.tgz
           tar -xzf ngrok-v3-stable-linux-amd64.tgz || { echo "Failed to extract ngrok"; exit 1; }
-          mv ngrok ./ngrok
+          ls -l ngrok
           chmod +x ./ngrok
-          ./ngrok --version
+          ./ngrok --version || { echo "ngrok binary not executable"; exit 1; }
           # Start Minikube
           echo "Starting Minikube..."
           minikube start --driver=docker --cpus=2 --memory=4000mb
@@ -87,7 +95,7 @@ jobs:
           # Apply Kubernetes resources
           echo "Checking ConfigMap content..."
           kubectl get configmap web-html -n default -o yaml
-          kubectl apply -f k8s/configmap.yaml || { echo "Failed to apply ConfigMap"; exit 1; }
+          kubectl apply -f k8s/web-html-configmap.yaml || { echo "Failed to apply ConfigMap"; exit 1; }
           kubectl apply -f k8s/deployment.yaml
           kubectl apply -f k8s/service.yaml || { echo "Failed to apply Service"; exit 1; }
           # Verify resources
@@ -103,7 +111,7 @@ jobs:
           # Start ngrok tunnel
           echo "Starting ngrok tunnel..."
           ./ngrok config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }} || { echo "Failed to configure ngrok"; exit 1; }
-          SERVICE_PORT=$(kubectl get service web -n default -o jsonpath='{.spec.ports[0].port}')
+          SERVICE_PORT=$(kubectl get service web -n default -o jsonpath='{.spec.ports[0].nodePort}')
           MINIKUBE_IP=$(minikube ip)
           echo "Tunneling http://$MINIKUBE_IP:$SERVICE_PORT..."
           ./ngrok http http://$MINIKUBE_IP:$SERVICE_PORT --log=ngrok.log &
@@ -132,4 +140,5 @@ jobs:
         if: always()
         run: |
           minikube stop || true
-          rm -rf /usr/local/bin/minikube /usr/local/bin/kubectl || true
+          rm -rf /usr/local/bin/minikube /usr/local/bin/kubectl ./ngrok ngrok.log ngrok-v3-stable-linux-amd64.tgz || true
+```
