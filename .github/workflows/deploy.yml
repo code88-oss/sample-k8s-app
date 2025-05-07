@@ -70,13 +70,21 @@ jobs:
           kubectl config use-context minikube
           kubectl apply -f k8s/configmap.yaml
           kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
           echo "Listing pods..."
           kubectl get pods -n default -o wide
+          echo "Listing services..."
+          kubectl get services -n default -o wide
           echo "Describing pods for deployment 'web'..."
           kubectl describe pod -l app=web -n default || { echo "No pods found with label app=web"; kubectl get pods -n default -o yaml; }
           echo "Checking pod logs..."
           kubectl logs -l app=web -n default || true
           kubectl rollout status deployment/web -n default --timeout=300s || { echo "Rollout failed"; kubectl describe deployment/web -n default; exit 1; }
+          echo "Getting service URL..."
+          minikube service web --url -n default
+          echo "Testing web application..."
+          SERVICE_URL=$(minikube service web --url -n default)
+          curl -s $SERVICE_URL || echo "Failed to access web"
 
       - name: Clean up
         if: always()
