@@ -102,10 +102,11 @@ jobs:
           minikube status || { echo "Minikube status check failed"; minikube logs; exit 1; }
           kubectl config use-context minikube
           # Apply Kubernetes resources
-          echo "Checking ConfigMap content..."
-          kubectl get configmap web-html -n default -o yaml
+          echo "Applying ConfigMap..."
           kubectl apply -f k8s/configmap.yaml || { echo "Failed to apply ConfigMap"; exit 1; }
-          kubectl apply -f k8s/deployment.yaml
+          echo "Checking ConfigMap content..."
+          kubectl get configmap web-html -n default -o yaml || true
+          kubectl apply -f k8s/deployment.yaml || { echo "Failed to apply Deployment"; exit 1; }
           kubectl apply -f k8s/service.yaml || { echo "Failed to apply Service"; exit 1; }
           # Verify resources
           echo "Listing pods..."
