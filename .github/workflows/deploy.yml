@@ -1,4 +1,3 @@
-```yaml
 name: Build and Push HTML App with Argo CD
 
 on:
@@ -190,4 +189,3 @@ jobs:
         run: |
           minikube stop || true
           rm -rf /usr/local/bin/minikube /usr/local/bin/kubectl ./ngrok ngrok.log ngrok-v3-stable-linux-amd64.tgz || true
-```
